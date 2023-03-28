@@ -12,6 +12,9 @@
   },
   "dependencies": {
     "@mdi/font": "5.9.55",
+    "@vitejs/plugin-basic-ssl": "^1.0.1",
+    "jsqr": "^1.4.0",
+    "qrcodejs": "https://github.com/davidshimjs/qrcodejs",
     "roboto-fontface": "*",
     "vue": "^3.2.25",
     "vuetify": "^3.0.0-beta.0",
