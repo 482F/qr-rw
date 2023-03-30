@@ -1,30 +1,20 @@
 <template>
   <v-app>
     <v-main>
-      <HelloWorld/>
+      <suspense>
+        <main-component />
+      </suspense>
     </v-main>
   </v-app>
 </template>
 
-<script>
-import HelloWorld from './components/HelloWorld.vue'
-
-export default {
-  name: 'App',
-
-  components: {
-    HelloWorld,
-  },
-
-  data: () => ({
-    //
-  }),
-}
+<script setup lang="ts">
+import MainComponent from './components/main-component.vue'
 </script>
 
 <style lang="scss">
 * {
-  font-family: "Cica";
+  font-family: 'Cica';
   &::-webkit-scrollbar-track {
     background-color: #eee;
   }
