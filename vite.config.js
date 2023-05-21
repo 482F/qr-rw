@@ -22,6 +22,7 @@ export default defineConfig({
   ],
   build: {
     outDir: 'dist/latest',
+    target: 'esnext',
   },
   define: { 'process.env': {} },
   resolve: {
