@@ -1,167 +1,106 @@
 <template>
   <div class="main-component">
-    <div class="control">
-      <v-btn @click="copy">コピー</v-btn>
+    <div class="form">
+      <v-btn variant="outlined" :disabled="!qrValue" @click="copy(qrValue)">
+        コピー
+      </v-btn>
       <a
+        class="button-link"
         :class="{
-          'no-link-style': true,
-          'disabled-link': !isUrl,
+          disabled: !isLink,
         }"
-        :href="code"
-        target="_blank"
+        :href="qrValue"
       >
-        <v-btn :disabled="!isUrl">URLを開く</v-btn>
+        <v-btn variant="outlined" :disabled="!isLink"> URL を開く </v-btn>
       </a>
-      <v-text-field
-        class="code"
-        v-model="code"
-        density="compact"
-        variant="outlined"
-        :type="showCode ? 'text' : 'password'"
-        :append-inner-icon="showCode ? 'mdi-eye' : 'mdi-eye-off'"
-        @click:append-inner="showCode = !showCode"
-      />
+      <v-text-field v-model="qrValue" density="compact" variant="outlined" />
     </div>
-    <canvas id="canvas"></canvas>
-    <div id="qrcode"></div>
-    <v-snackbar v-model="snackbar" location="top" color="white">
-      コピーしました
-    </v-snackbar>
+    <video
+      :class="{
+        'media-enabled': mediaEnabled,
+      }"
+      ref="videoElRef"
+    ></video>
+    <div class="qrimg" ref="qrImgElRef"></div>
   </div>
 </template>
 
 <script setup lang="ts">
-import jsQR from 'jsqr'
+import { ref, Ref, onMounted, watch, computed } from 'vue'
+import { makeGetQrValue } from '../ts/qr'
 import QRCode from '../qrcode'
-import { onMounted, ref, watch, computed } from 'vue'
-const code = ref('')
-const showCode = ref(false)
-const snackbar = ref(false)
-const isUrl = computed(() => {
-  try {
-    new URL(code.value)
-    return true
-  } catch {
-    return false
-  }
-})
-function copy() {
-  navigator.clipboard.writeText(code.value)
-  snackbar.value = true
-}
-async function sleep(ms: number): Promise<void> {
-  await new Promise((resolve) => setTimeout(resolve, ms))
-}
-async function wait<F extends () => any>(
-  func: F,
-  intervalMs: number = 100,
-  timeoutMs: number = 0
-) {
-  let timeouted = false
-  if (0 < timeoutMs) {
-    setTimeout(() => (timeouted = true), timeoutMs)
-  }
-  type R = F extends () => infer U ? U : never
-  let result: R | null = null
 
-  while (!result && !timeouted) {
-    result = await func()
-    await sleep(intervalMs)
-  }
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+const copy = (value: string) => navigator.clipboard.writeText(value)
 
-  if (!result) {
-    throw new Error('wait 関数がタイムアウトしました')
-  }
-  return result
-}
-onMounted(async () => {
-  watch(code, () => {
-    qrEl.innerHTML = ''
-    new QRCode(qrEl, {
-      text: code.value,
-      width: 1280,
-      height: 1280,
-      colorDark: '#000000',
-      colorLight: '#ffffff',
+const qrValue = ref('')
+const isLink = computed(() => qrValue.value.match(/^https?:\/\/.+\..+/))
+
+const qrImgElRef: Ref<HTMLDivElement | undefined> = ref(undefined)
+async function encodeQrPrep() {
+  if (!qrImgElRef.value) return
+  const qrImgEl = qrImgElRef.value
+  watch(qrValue, () => {
+    qrImgEl.innerHTML = ''
+    new QRCode(qrImgEl, {
+      text: qrValue.value,
+      width: 600,
+      height: 600,
       correctLevel: QRCode.CorrectLevel.H,
     })
   })
+}
 
-  const video = document.createElement('video')
-  const canvas = await wait(() =>
-    document.querySelector<HTMLCanvasElement>('canvas#canvas')
-  )
-  const ctx = await wait(() => canvas.getContext('2d'))
-  const qrEl = await wait(() => document.querySelector('div#qrcode'))
-  const stream = await navigator.mediaDevices.getUserMedia({
-    video: { facingMode: 'environment' },
-  })
-  video.srcObject = stream
-  video.setAttribute('playsinline', 'true')
-  await video.play()
-  canvas.classList.add('videoed')
-
+const mediaEnabled = ref(false)
+const videoElRef: Ref<HTMLVideoElement | undefined> = ref(undefined)
+async function decodeQrPrep() {
+  if (!videoElRef.value) return
+  const makeQrValue = await makeGetQrValue(videoElRef.value)
+  mediaEnabled.value = Boolean(makeQrValue)
+  if (!makeQrValue) return
   while (true) {
-    await sleep(250)
-    if (video.readyState !== video.HAVE_ENOUGH_DATA) {
-      continue
-    }
-    canvas.height = video.videoHeight
-    canvas.width = video.videoWidth
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-    const img = ctx.getImageData(0, 0, canvas.width, canvas.height)
-    code.value =
-      jsQR(img.data, img.width, img.height, { inversionAttempts: 'dontInvert' })
-        ?.data ?? code.value
+    await sleep(500)
+    qrValue.value = (await makeQrValue()) ?? qrValue.value
   }
+}
+onMounted(async () => {
+  encodeQrPrep()
+  decodeQrPrep()
 })
 </script>
 
 <style lang="scss" scoped>
 .main-component {
-  height: 100vh;
-  width: min(calc(100vw - 40px), 800px);
-  margin: 20px auto;
-  display: grid;
-  // grid-template: auto 0.5fr 0.5fr / minmax(0, 1fr);
-  grid-template: auto 1fr 0px / minmax(0, 1fr);
-  grid-template-areas:
-    'control'
-    'main'
-    'hidden';
-  overflow: hidden;
-  gap: 10px;
-  > .control {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    ::v-deep(.v-input__details) {
-      display: none;
-    }
-  }
-  > #qrcode {
-    display: flex;
-    justify-content: center;
-    overflow: hidden;
+  padding-top: 32px;
+  max-width: 90vw;
+  width: 600px;
 
-    > ::v-deep(*) {
-      height: 80%;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  > .form {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    > * {
+      color: black;
+    }
+    > .button-link {
+      text-decoration: none;
     }
   }
-  > #canvas:not(.videoed) {
+  ::v-deep(.v-input__details) {
     display: none;
-    grid-area: hidden;
   }
-  > #canvas.videoed {
-    grid-area: main;
+  > video:not(.media-enabled) {
+    display: none;
   }
-  .no-link-style {
-    color: black;
-    text-decoration: none;
-  }
-  .disabled-link {
-    pointer-events: none;
+  > .qrimg {
+    display: flex;
+    > ::v-deep(*) {
+      min-width: 0;
+      flex-shrink: 1;
+    }
   }
 }
 </style>

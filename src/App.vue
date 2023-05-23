@@ -1,6 +1,6 @@
 <template>
   <v-app>
-    <v-main>
+    <v-main class="main">
       <suspense>
         <main-component />
       </suspense>
@@ -26,5 +26,12 @@ import MainComponent from './components/main-component.vue'
     background-color: #ccc;
     border-radius: 30px;
   }
+}
+</style>
+
+<style lang="scss" scoped>
+.main {
+  display: flex;
+  justify-content: center;
 }
 </style>
