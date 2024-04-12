@@ -13,7 +13,13 @@
       >
         <v-btn variant="outlined" :disabled="!isLink"> URL を開く </v-btn>
       </a>
-      <v-text-field v-model="qrValue" density="compact" variant="outlined" />
+      <v-text-field
+        v-model="qrValue"
+        density="compact"
+        variant="outlined"
+        append-inner-icon="mdi-backspace"
+        @click:append-inner="qrValue = ''"
+      />
     </div>
     <video
       :class="{
@@ -71,7 +77,7 @@ onMounted(async () => {
 
 <style lang="scss" scoped>
 .main-component {
-  padding-top: 32px;
+  padding: 32px 0;
   max-width: 90vw;
   width: 600px;
 
